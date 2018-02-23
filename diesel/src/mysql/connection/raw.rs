@@ -42,6 +42,25 @@ impl RawConnection {
     }
 
     pub fn connect(&self, connection_options: &ConnectionOptions) -> ConnectionResult<()> {
+        if let Some(ssl_opts) = connection_options.ssl_opts() {
+            let key = ssl_opts.key();
+            let cert = ssl_opts.cert();
+            let ca = ssl_opts.ca();
+            let capath = ssl_opts.capath();
+            let cipher = ssl_opts.cipher();
+
+            unsafe {
+                ffi::mysql_ssl_set(
+                    self.0,
+                    key.map(CStr::as_ptr).unwrap_or_else(|| ptr::null_mut()),
+                    cert.map(CStr::as_ptr).unwrap_or_else(|| ptr::null_mut()),
+                    ca.map(CStr::as_ptr).unwrap_or_else(|| ptr::null_mut()),
+                    capath.map(CStr::as_ptr).unwrap_or_else(|| ptr::null_mut()),
+                    cipher.map(CStr::as_ptr).unwrap_or_else(|| ptr::null_mut()),
+                );
+            }
+        }
+
         let host = connection_options.host();
         let user = connection_options.user();
         let password = connection_options.password();
