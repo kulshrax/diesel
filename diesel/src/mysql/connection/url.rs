@@ -12,6 +12,7 @@ pub struct ConnectionOptions {
     password: Option<CString>,
     database: Option<CString>,
     port: Option<u16>,
+    ssl_opts: Option<SslOptions>,
 }
 
 impl ConnectionOptions {
@@ -44,12 +45,27 @@ impl ConnectionOptions {
             Some(segment) => Some(try!(CString::new(segment.as_bytes()))),
         };
 
+        let mut ssl_opts: Option<SslOptions> = None;
+        for (k, v) in url.query_pairs() {
+            if let Some(field) = match &*k {
+                "sslkey" => Some(&mut ssl_opts.get_or_insert_with(Default::default).key),
+                "sslcert" => Some(&mut ssl_opts.get_or_insert_with(Default::default).cert),
+                "sslca" => Some(&mut ssl_opts.get_or_insert_with(Default::default).ca),
+                "sslcapath" => Some(&mut ssl_opts.get_or_insert_with(Default::default).capath),
+                "sslcipher" => Some(&mut ssl_opts.get_or_insert_with(Default::default).cipher),
+                _ => None,
+            } {
+                *field = Some(CString::new(v.into_owned())?);
+            }
+        }
+
         Ok(ConnectionOptions {
             host: host,
             user: user,
             password: password,
             database: database,
             port: url.port(),
+            ssl_opts: ssl_opts,
         })
     }
 
@@ -71,6 +87,41 @@ impl ConnectionOptions {
 
     pub fn port(&self) -> Option<u16> {
         self.port
+    }
+
+    pub fn ssl_opts(&self) -> Option<&SslOptions> {
+        self.ssl_opts.as_ref()
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct SslOptions {
+    key: Option<CString>,
+    cert: Option<CString>,
+    ca: Option<CString>,
+    capath: Option<CString>,
+    cipher: Option<CString>,
+}
+
+impl SslOptions {
+    pub fn key(&self) -> Option<&CStr> {
+        self.key.as_ref().map(|x| &**x)
+    }
+
+    pub fn cert(&self) -> Option<&CStr> {
+        self.cert.as_ref().map(|x| &**x)
+    }
+
+    pub fn ca(&self) -> Option<&CStr> {
+        self.ca.as_ref().map(|x| &**x)
+    }
+
+    pub fn capath(&self) -> Option<&CStr> {
+        self.capath.as_ref().map(|x| &**x)
+    }
+
+    pub fn cipher(&self) -> Option<&CStr> {
+        self.cipher.as_ref().map(|x| &**x)
     }
 }
 
