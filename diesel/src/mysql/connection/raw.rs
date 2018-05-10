@@ -175,9 +175,6 @@ impl RawConnection {
         while self.next_result()? {
             self.consume_current_result()?;
         }
-        // next_result returns whether we've advanced to the *last* one, not
-        // whether we're completely done.
-        self.consume_current_result()?;
         Ok(())
     }
 
